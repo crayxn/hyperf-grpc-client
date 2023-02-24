@@ -16,7 +16,8 @@ use Hyperf\LoadBalancer\Node;
 use Hyperf\ServiceGovernance\DriverManager;
 use Psr\Container\ContainerInterface;
 
-class GrpcClientManager {
+class GrpcClientManager
+{
     private string|null $credentials = null;
     private array $pools = [];
 
@@ -24,27 +25,45 @@ class GrpcClientManager {
     protected ConfigInterface $config;
     protected StdoutLoggerInterface $logger;
 
-    public function __construct(protected ContainerInterface $container) {
-        $this->config            = $this->container->get(ConfigInterface::class);
+    protected string $algo = '';
+    protected array $server_alias = [];
+
+    protected string $driver = "nacos";
+
+    protected string $consul_host = '';
+
+    public function __construct(protected ContainerInterface $container)
+    {
+        $this->config = $this->container->get(ConfigInterface::class);
         $this->governanceManager = $this->container->get(DriverManager::class);
-        $this->logger            = $this->container->get(StdoutLoggerInterface::class);
+        $this->logger = $this->container->get(StdoutLoggerInterface::class);
+        // 获取配置
+        $this->algo = $this->config->get("grpc.register.algo", "round-robin");
+        $this->server_alias = $this->config->get("grpc.server_alias", []);
+        $this->driver = $this->config->get("grpc.register.driver", "nacos");
+        $this->consul_host = $this->config->get("services.drivers.consul.uri", "");
     }
 
-    public function getNode(string $server): string {
-        $driverName       = $this->config->get("grpc.register.driver_name", "nacos");
-        $consulDriverPath = $driverName == "nacos" ? "" : $this->config->get("services.drivers.consul.uri", "");
-        $algo             = $this->config->get("grpc.register.algo", "round-robin");
-        if ($governance = $this->governanceManager->get($driverName)) {
+    private function getDriverHost()
+    {
+        return $this->driver == "consul" ? $this->consul_host : '';
+    }
+
+    public function getNode(string $server): string
+    {
+        $server = $this->server_alias[$server] ?? $server;
+
+        if ($governance = $this->governanceManager->get($this->driver)) {
             try {
                 /**
                  * @var LoadBalancerManager $loadBalancerManager
                  */
                 $loadBalancerManager = $this->container->get(LoadBalancerManager::class);
-                $serverLB            = $loadBalancerManager->getInstance($server, $algo);
+                $serverLB = $loadBalancerManager->getInstance($server, $this->algo);
                 if (!$serverLB->isAutoRefresh()) {
-                    $fun = function () use ($governance, $server, $consulDriverPath) {
+                    $fun = function () use ($governance, $server) {
                         $nodes = [];
-                        foreach ($governance->getNodes($consulDriverPath, $server, ['protocol' => 'grpc']) as $node) {
+                        foreach ($governance->getNodes($this->getDriverHost(), $server, ['protocol' => 'grpc']) as $node) {
                             $nodes[] = new Node($node['host'], $node['port'], $node['weight'] ?? 1);
                         }
                         return $nodes;
@@ -54,7 +73,7 @@ class GrpcClientManager {
                 $node = $serverLB->select();
                 return sprintf("%s:%d", $node->host, $node->port);
             } catch (\Throwable $throwable) {
-                $this->logger->error(sprintf("Get Node[%s] From %s[%s] Fail! Because:%s", $server, $driverName, $algo, $throwable->getMessage()));
+                $this->logger->error(sprintf("Get Node[%s] From %s[%s] Fail! Because:%s", $server, $this->driver, $this->algo, $throwable->getMessage()));
             }
         }
         return "";
@@ -67,7 +86,8 @@ class GrpcClientManager {
      * @return GrpcClient
      * @throws Exception
      */
-    public function getClient(string $hostname, string $method): GrpcClient {
+    public function getClient(string $hostname, string $method): GrpcClient
+    {
         if (empty($hostname)) {
             //获取服务名称
             $server = trim(current(explode(".", $method)), "/");
@@ -86,17 +106,20 @@ class GrpcClientManager {
         return $this->pools[$hostname];
     }
 
-    public function addClient(string $hostname, GrpcClient $client): void {
+    public function addClient(string $hostname, GrpcClient $client): void
+    {
         $this->pools[$hostname] = $client;
     }
 
-    public function removeClient(string $hostname, GrpcClient $client): void {
+    public function removeClient(string $hostname, GrpcClient $client): void
+    {
         if (isset($this->pools[$hostname])) {
             unset($this->pools[$hostname]);
         }
     }
 
-    public function invoke(string $hostname, string $method, $argument, $deserialize, array $metadata = [], array $options = []): array {
+    public function invoke(string $hostname, string $method, $argument, $deserialize, array $metadata = [], array $options = []): array
+    {
         //响应
         try {
             return $this->getClient($hostname, $method)->invoke($method, $argument, $deserialize, $metadata, $options);

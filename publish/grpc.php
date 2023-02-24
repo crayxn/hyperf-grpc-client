@@ -15,5 +15,6 @@ return [
         "path"                   => env("REFLECTION_PATH", 'app/Grpc/GPBMetadata'), //反射路径 指protoc生成的GPBMetadata文件路径
         "base_class"             => [], //需要引入的 基础类 如 google/protobuf/Struct
         "route_to_proto_pattern" => "", //路由服务名称转proto名称正则 如 /(.*?)Srv/
-    ]
+    ],
+    "server_alias" => [] //服务别名
 ];
