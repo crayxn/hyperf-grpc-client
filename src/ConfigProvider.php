@@ -12,12 +12,15 @@ declare(strict_types=1);
 
 namespace Crayoon\HyperfGrpcClient;
 
+use Crayoon\HyperfGrpcClient\Command\GenerateCommand;
+
 class ConfigProvider {
     public function __invoke(): array {
         return [
             'dependencies' => [
             ],
             'commands'     => [
+                GenerateCommand::class
             ],
             'annotations'  => [
                 'scan' => [

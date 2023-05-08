@@ -28,7 +28,8 @@
         "hyperf/service-governance-consul": "^3.0",
         "hyperf/service-governance-nacos": "^3.0",
         "hyperf/tracer": "^3.0",
-        "jonahgeorge/jaeger-client-php": "^1.4"
+        "jonahgeorge/jaeger-client-php": "^1.4",
+        "hyperf/command": "^v3.0"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.0",
