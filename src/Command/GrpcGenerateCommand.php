@@ -1,4 +1,9 @@
 <?php
+declare(strict_types=1);
+/**
+ * @author   crayxn <https://github.com/crayxn>
+ * @contact  crayxn@qq.com
+ */
 
 namespace Crayoon\HyperfGrpcClient\Command;
 
@@ -7,9 +12,8 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Process\Process;
 
-class GenerateCommand extends Command
+class GrpcGenerateCommand extends Command
 {
-
     protected bool $coroutine = false;
     protected ?string $name = "gen:grpc";
 
@@ -17,21 +21,25 @@ class GenerateCommand extends Command
     {
         parent::configure();
         $this->setDescription('Generate Grpc And Client');
-        $this->addArgument('protobuf', InputArgument::REQUIRED, 'The protobuf file');
+        $this->addArgument('protobuf', InputArgument::IS_ARRAY, 'The protobuf file');
         $this->addOption('output', 'o', InputOption::VALUE_OPTIONAL, 'The output dir.');
-        $this->addOption('path', 'i', InputOption::VALUE_OPTIONAL, 'The proto path.');
+        $this->addOption('paths', 'i', InputOption::VALUE_OPTIONAL, 'The proto paths.');
+        $this->addOption('plugin', 'p', InputOption::VALUE_OPTIONAL, 'The plugin path');
     }
 
     public function handle()
     {
-        $protobuf = $this->input->getArgument('protobuf');
+        $protobuf = implode(",", $this->input->getArgument('protobuf'));
         $output = $this->input->getOption('output') ?: getcwd();
-        $path = $this->input->getOption('path') ?: dirname($protobuf);
+        $paths = $this->input->getOption('paths') ?: '../protos/';
+        $plugin_path = $this->input->getOption('plugin') ?: "/usr/local/lib/grpc_php_plugin";
 
         $process = new Process([
-            __DIR__ . '/../../grpc-generator',
-            '-protoPath=' . $path,
-            '-proto=' . $protobuf
+            __DIR__ . '/../../bin/grpc-generator',
+            '-protoPath=' . $paths,
+            '-pluginPath=' . $plugin_path,
+            '-proto=' . $protobuf,
+            '-path=' . $output
         ]);
 
         $process->run(function ($type, $buffer) {
@@ -46,8 +54,10 @@ class GenerateCommand extends Command
         $result = $process->getOutput();
 
         if ($return === 0) {
-            $this->output->writeln('<info>PHP classes successfully generate.</info>');
+            $this->output->writeln('');
             $this->output->writeln($result);
+            $this->output->writeln('');
+            $this->output->writeln('<info>Successfully generate.</info>');
             return $return;
         }
 

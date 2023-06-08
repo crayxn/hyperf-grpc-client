@@ -50,7 +50,8 @@
     "scripts": {
         "test": "phpunit -c phpunit.xml --colors=always",
         "analyse": "phpstan analyse --memory-limit 1024M -l 0 ./src",
-        "cs-fix": "php-cs-fixer fix $1"
+        "cs-fix": "php-cs-fixer fix $1",
+        "post-package-update": "chmod +x ./bin/grpc-generator"
     },
     "extra": {
         "hyperf": {

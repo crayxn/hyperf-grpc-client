@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Crayoon\HyperfGrpcClient;
 
-use Crayoon\HyperfGrpcClient\Command\GenerateCommand;
+use Crayoon\HyperfGrpcClient\Command\GrpcGenerateCommand;
 
 class ConfigProvider {
     public function __invoke(): array {
@@ -20,7 +20,7 @@ class ConfigProvider {
             'dependencies' => [
             ],
             'commands'     => [
-                GenerateCommand::class
+                GrpcGenerateCommand::class
             ],
             'annotations'  => [
                 'scan' => [
